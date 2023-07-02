@@ -1,0 +1,15 @@
+server:
+  port: 9000
+
+spring:
+  cloud:
+    function:
+      definition: proceedMessage
+    stream:
+      bindings:
+        proceedMessage-out-0:
+          group: message
+          destination: input-message
+      binders:
+        kafka:
+          type: kafka

@@ -1,0 +1,18 @@
+server:
+  port: 7001
+
+spring:
+  cloud:
+    function:
+      definition: receiveMessage
+    stream:
+      bindings:
+        receiveMessage-in-0:
+          group: message
+          destination: input-message
+      kafka:
+        bindings:
+          receiveMessage-in-0:
+            consumer:
+              enableDlq: true
+              dlqName: input-message-dlq
