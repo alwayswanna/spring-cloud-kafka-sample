@@ -1,7 +1,8 @@
 package a.gleb.producer.service;
 
 import a.gleb.common.models.MessageModel;
-import a.gleb.producer.model.Message;
+import a.gleb.producer.model.MessageRequest;
+import a.gleb.producer.model.MessageResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cloud.stream.function.StreamBridge;
@@ -16,10 +17,12 @@ public class MessageService {
 
     private final StreamBridge streamBridge;
 
-    public void sendMessage(Message message) {
+    public MessageResponse sendMessage(MessageRequest messageRequest) {
         streamBridge.send(
                 BINDING_NAME,
-                MessageModel.builder().login("producer-app").userMessage(message.getMessage()).build()
+                MessageModel.builder().login("producer-app").userMessage(messageRequest.getMessage()).build()
         );
+
+        return MessageResponse.successResponse();
     }
 }
