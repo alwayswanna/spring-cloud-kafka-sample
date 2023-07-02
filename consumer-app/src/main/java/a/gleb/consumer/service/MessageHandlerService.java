@@ -12,6 +12,10 @@ import org.springframework.validation.annotation.Validated;
 public class MessageHandlerService {
 
     public void receiveMessage(@Valid MessageModel messageModel) {
-        log.info("received message from topic: {}", messageModel);
+        log.info(
+                "received message from topic: [user={}, message={}]",
+                messageModel.getLogin(),
+                messageModel.getUserMessage()
+        );
     }
 }
