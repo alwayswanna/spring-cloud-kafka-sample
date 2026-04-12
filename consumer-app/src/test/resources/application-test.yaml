@@ -1,0 +1,7 @@
+spring:
+  cloud:
+    stream:
+      kafka:
+        binder:
+          auto-create-topics: true
+          auto-add-partitions: true

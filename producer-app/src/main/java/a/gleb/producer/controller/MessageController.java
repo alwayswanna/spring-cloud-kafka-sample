@@ -1,38 +1,42 @@
 package a.gleb.producer.controller;
 
-import a.gleb.producer.model.MessageRequest;
-import a.gleb.producer.model.MessageResponse;
-import a.gleb.producer.service.MessageService;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import a.gleb.producer.controller.swagger.MessageControllerSwagger;
+import a.gleb.producer.model.request.MessageRequest;
+import a.gleb.producer.model.response.MessageResponse;
+import a.gleb.producer.service.UserMessageService;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.*;
 
-import static a.gleb.producer.controller.MessageController.PRODUCER_CONTROLLER_TAG;
-
+/**
+ * REST controller for handling message producer endpoints.
+ * <p>
+ * This controller provides an API to publish messages to a Kafka topic via the
+ * {@link UserMessageService}. It validates incoming requests and returns a
+ * correlation identifier for each successfully sent message.
+ * </p>
+ *
+ * @author [a.gleb]
+ * @version 1.0
+ * @see UserMessageService
+ * @since 2026-04-12
+ */
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/api/v1")
-@Tag(name = PRODUCER_CONTROLLER_TAG)
-public class MessageController {
+@RequestMapping("/api/v1/message")
+@Tag(name = "message-producer-controller")
+public class MessageController implements MessageControllerSwagger {
 
-    static final String PRODUCER_CONTROLLER_TAG = "message-producer-controller";
+    private final UserMessageService userMessageService;
 
-    private final MessageService messageService;
-
-    @Operation(summary = "Method which send messages to Kafka")
-    @ApiResponses({
-            @ApiResponse(responseCode = "200"),
-            @ApiResponse(responseCode = "500")
-    })
     @PostMapping("/send")
-    public ResponseEntity<MessageResponse> sendMessage(@RequestBody MessageRequest messageRequest) {
-        return ResponseEntity.ok(messageService.sendMessage(messageRequest));
+    public MessageResponse sendMessage(
+            @RequestHeader String login,
+            @Valid @RequestBody MessageRequest messageRequest
+    ) {
+        return userMessageService.sendMessage(login, messageRequest);
     }
 }

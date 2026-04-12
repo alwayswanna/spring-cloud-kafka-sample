@@ -1,18 +1,81 @@
 server:
-  port: 7001
+  port: 9002
 
 spring:
+  application:
+    name: consumer-app
+  threads:
+    virtual:
+      enabled: true
+  kafka:
+    consumer:
+      auto-offset-reset: earliest          # Start reading from the earliest offset when no committed offset exists
+    producer:
+      properties:
+        metadata.max.age.ms: 300000        # Force metadata refresh every 5 min (helps reconnect after rebalancing)
   cloud:
     function:
-      definition: receiveMessage
+      definition: receiveUserMessage       # Name of the functional consumer bean
     stream:
       bindings:
-        receiveMessage-in-0:
-          group: message
-          destination: input-message
+        receiveUserMessage-in-0:
+          group: user-message.consumer.app # Consumer group id (for offset management and load balancing)
+          destination: user-message        # Kafka topic to consume from
+          content-type: application/json   # Expected content type (JSON deserialization)
+          consumer:
+            concurrency: 1                 # Number of concurrent KafkaMessageListenerContainers
+            max-attempts: 1                # No retries for deterministic failures (e.g. validation errors) — go straight to DLQ
       kafka:
+        binder:
+          auto-create-topics: false
+          auto-add-partitions: false
+          consumer-properties: # Native Kafka consumer configuration
+            max.poll.records: 100          # Max records per poll() call
+            max.poll.interval.ms: 600000   # Max time between polls before consumer considered dead (10 min)
+            session.timeout.ms: 120000     # Max time to miss heartbeat before group rebalance (2 min)
+            heartbeat.interval.ms: 30000   # Frequency of heartbeats (≤ session.timeout.ms/3, with margin)
+            request.timeout.ms: 60000      # Max time for a request to complete (1 min)
+            metadata.max.age.ms: 300000    # Force metadata refresh every 5 min (helps reconnect after rebalancing)
         bindings:
-          receiveMessage-in-0:
+          receiveUserMessage-in-0:
             consumer:
-              enableDlq: true
-              dlqName: input-message-dlq
+              enable-dlq: true             # Send failed messages to Dead Letter Queue
+              dlq-name: user-message.dlq   # Name of the DLQ topic
+              dlq-partitions: 1            # Number of partitions for the DLQ topic
+              ack-mode: record             # Commit offset after each successfully processed record
+
+management:
+  server:
+    port: 9003
+  endpoints:
+    web:
+      discovery:
+        enabled: false
+      exposure:
+        include: health, prometheus
+    access:
+      default: read_only
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      access: read_only
+    metrics:
+      access: read_only
+    prometheus:
+      access: read_only
+  defaults:
+    metrics:
+      export:
+        enabled: false
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+
+logging:
+  level:
+    # FYI: too much trash logs.
+    org.apache.kafka: warn
+    # FYI: warning spam: `Not updating high watermark for partition $PARTITION_NAME it is no longer assigned`. Does not affect the operation of the service.
+    org.apache.kafka.clients.consumer.internals.OffsetFetcherUtils: off

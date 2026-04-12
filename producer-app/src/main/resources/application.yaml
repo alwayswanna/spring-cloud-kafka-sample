@@ -2,14 +2,65 @@ server:
   port: 9000
 
 spring:
+  application:
+    name: producer-app
+  threads:
+    virtual:
+      enabled: true
+  kafka:
+    producer:
+      properties:
+        metadata.max.age.ms: 300000        # Force metadata refresh every 5 min (helps reconnect after rebalancing)
   cloud:
-    function:
-      definition: proceedMessage
     stream:
       bindings:
         proceedMessage-out-0:
-          group: message
-          destination: input-message
-      binders:
-        kafka:
-          type: kafka
+          destination: user-message          # Kafka topic name
+          content-type: application/json     # Content type (JSON)
+      kafka:
+        binder:
+          transaction:
+            transaction-id-prefix: ${spring.application.name}-${random.uuid}-  # Enables transactions + unique ID
+          auto-create-topics: false
+          auto-add-partitions: false
+          configuration:                              # Common KafkaProducer settings
+            acks: all                                 # Wait for all replicas to acknowledge (required for transactions)
+            enable.idempotence: true                  # Idempotence (required when transaction.id is set)
+            max.in.flight.requests.per.connection: 5  # Safe with enable.idempotence=true; preserves ordering and improves throughput
+        bindings:
+          proceedMessage-out-0:
+            producer:
+              sync: true                     # Synchronous send (to catch errors for rollback)
+              send-timeout-expression: 60000 # Timeout waiting for ack (ms), when sync=true
+    function:
+      definition: proceedMessage
+
+management:
+  server:
+    port: 9001
+  endpoints:
+    web:
+      discovery:
+        enabled: false
+      exposure:
+        include: health, prometheus
+    access:
+      default: read_only
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      access: read_only
+    metrics:
+      access: read_only
+    prometheus:
+      access: read_only
+  defaults:
+    metrics:
+      export:
+        enabled: false
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+
